@@ -3,8 +3,8 @@
     "step": {
       "user": {
         "data": {
-          "host": "BlueBubbles Server Host, with http[s]:// and port if needed",
-          "password": "BlueBubbles Server Password",
+          "host": "Server Host, http[s]:// + port if needed",
+          "password": "Server Password",
           "ssl": "SSL certificate (disable if self-signed)?",
           "country_code": "Country Code"
         }
