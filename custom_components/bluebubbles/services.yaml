@@ -1,0 +1,18 @@
+send_imessage:
+  name: Send iMessage
+  description: Sends an iMessage via BlueBubbles.
+  fields:
+    number:
+      name: Number
+      description: The phone number to send to (without country code if using default).
+      required: true
+      example: "5551234567"
+      selector:
+        text:
+    message:
+      name: Message
+      description: The message to send.
+      required: true
+      example: "Hello!"
+      selector:
+        text:
