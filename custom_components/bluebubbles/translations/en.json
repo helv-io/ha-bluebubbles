@@ -4,19 +4,19 @@
       "user": {
         "data": {
           "host": "BlueBubbles Server Host, with http[s]:// and port if needed",
-          "password": "[%key:common::config_flow::data::password%]",
-          "ssl": "Expect a valid SSL certificate (disable if using self-signed)?",
+          "password": "BlueBubbles Server Password",
+          "ssl": "SSL certificate (disable if self-signed)?",
           "country_code": "Country Code"
         }
       }
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "cannot_connect": "Cannot connect to the BlueBubbles server. Please check the host and your network connection.",
+      "invalid_auth": "Invalid authentication. Please check your password.",
+      "unknown": "An unknown error occurred. Please try again and check the logs if the problem persists."
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "This BlueBubbles server is already configured.",
     }
   }
 }
