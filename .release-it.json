@@ -1,0 +1,11 @@
+{
+  "plugins": {
+    "@release-it/bumper": {
+      "files": ["custom_components/bluebubbles/manifest.json"],
+      "versionPath": "version"
+    }
+  },
+  "git": {
+    "commitMessage": "chore: release v${version}"
+  }
+}
