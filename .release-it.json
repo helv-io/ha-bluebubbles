@@ -1,8 +1,8 @@
 {
   "plugins": {
     "@release-it/bumper": {
-      "files": ["custom_components/bluebubbles/manifest.json"],
-      "versionPath": "version"
+      "in": "custom_components/bluebubbles/manifest.json",
+      "out": "custom_components/bluebubbles/manifest.json"
     }
   },
   "git": {
