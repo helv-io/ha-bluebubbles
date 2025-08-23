@@ -3,9 +3,9 @@
     "step": {
       "user": {
         "data": {
-          "host": "[%key:common::config_flow::data::host%]",
+          "host": "BlueBubbles Server Host, with http[s]:// and port if needed",
           "password": "[%key:common::config_flow::data::password%]",
-          "ssl": "[%key:common::config_flow::data::ssl%]",
+          "ssl": "Expect a valid SSL certificate (disable if using self-signed)?",
           "country_code": "Country Code"
         }
       }
