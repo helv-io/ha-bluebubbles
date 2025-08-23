@@ -16,7 +16,7 @@
       "unknown": "An unknown error occurred. Please try again and check the logs if the problem persists."
     },
     "abort": {
-      "already_configured": "This BlueBubbles server is already configured.",
+      "already_configured": "This BlueBubbles server is already configured."
     }
   }
 }
