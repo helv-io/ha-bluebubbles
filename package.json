@@ -3,9 +3,6 @@
   "name": "ha-bluebubbles",
   "version": "0.1.4",
   "description": "A project for managing BlueBubbles integration.",
-  "scripts": {
-    "release": "npm release-it"
-  },
   "author": "Helvio Pedreschi",
   "license": "MIT",
   "dependencies": {
