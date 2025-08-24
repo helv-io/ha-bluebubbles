@@ -55,7 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 response.raise_for_status()
                 _LOGGER.debug("Message sent successfully")
         except aiohttp.ClientError as err:
-            _LOGGER.error("Error sending message: %s", err)
+            _LOGGER.error("Error sending message: %s. Payload: %s", err, payload)
             raise
 
     hass.services.async_register(DOMAIN, "send_message", send_message)
