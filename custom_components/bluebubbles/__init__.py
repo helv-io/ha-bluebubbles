@@ -43,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         url = f"{host}/api/v1/chat/new"
         params = {"password": password}
-        payload = {"addresses": addresses, "message": message}
+        payload = {"addresses": addresses, "message": message, "method": "private-api"}
 
         try:
             async with aiohttp.ClientSession() as session, session.post(
