@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "ha-bluebubbles",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "A project for managing BlueBubbles integration.",
   "author": "Helvio Pedreschi",
   "license": "MIT",
