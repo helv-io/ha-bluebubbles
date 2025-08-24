@@ -1,15 +1,12 @@
 {
   "domain": "bluebubbles",
   "name": "BlueBubbles",
-  "codeowners": [
-    "@Helvio88"
-  ],
+  "codeowners": ["@Helvio88"],
   "config_flow": true,
   "documentation": "https://github.com/helv-io/ha-bluebubbles/blob/main/README.md",
-  "issue_tracker": "https://github.com/helv-io/ha-bluebubbles/issues",
+  "integration_type": "service",
   "iot_class": "local_push",
-  "requirements": [
-    "aiohttp"
-  ],
+  "issue_tracker": "https://github.com/helv-io/ha-bluebubbles/issues",
+  "requirements": ["aiohttp"],
   "version": "0.2.0"
 }
