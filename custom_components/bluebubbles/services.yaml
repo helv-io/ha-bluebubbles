@@ -1,12 +1,12 @@
-send_imessage:
-  name: Send iMessage
-  description: Sends an iMessage via BlueBubbles.
+send_message:
+  name: Send Message
+  description: Sends a Message (iMessage / RCS / MMS / SMS) via BlueBubbles.
   fields:
-    number:
-      name: Number
-      description: The phone number to send to (without country code if using default).
+    addresses:
+      name: Address(es)
+      description: The address(es) to send to. Multiple addresses can be separated by commas or semicolons.
       required: true
-      example: "5551234567"
+      example: "+15558675309, a.contact@me.com"
       selector:
         text:
     message:

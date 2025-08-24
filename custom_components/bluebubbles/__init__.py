@@ -1,13 +1,13 @@
 """The BlueBubbles integration."""
 import logging
-import uuid
+import re
 
 import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .const import CONF_COUNTRY_CODE, CONF_HOST, CONF_PASSWORD, CONF_SSL, DOMAIN
+from .const import CONF_HOST, CONF_PASSWORD, CONF_SSL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,58 +20,51 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = entry.data
 
-    async def send_imessage(service_call: ServiceCall) -> None:
-        """Handle the send_imessage service."""
+    async def send_message(service_call: ServiceCall) -> None:
+        """Handle the send_message service."""
         conf = entry.data
         host = conf[CONF_HOST]
         password = conf[CONF_PASSWORD]
         ssl = conf[CONF_SSL]
-        country_code = conf[CONF_COUNTRY_CODE]
 
-        number = service_call.data.get("number")
-        message = service_call.data.get("message")
+        number_str = service_call.data.get("number", "").strip()
+        message = service_call.data.get("message", "").strip()
 
-        if not number.startswith("+"):
-            number = f"+{country_code}{number}"
+        if not number_str:
+            raise ValueError("Number is required")
+        if not message:
+            raise ValueError("Message is required")
 
-        services = ["iMessage", "RCS", "SMS"]
-        url = f"{host}/api/v1/message/text"
+        # Split by , or ; and trim
+        addresses = [n.strip() for n in re.split(r'[,;]', number_str) if n.strip()]
+
+        if not addresses:
+            raise ValueError("No valid addresses provided")
+
+        url = f"{host}/api/v1/chat/new"
         params = {"password": password}
-        temp_guid = str(uuid.uuid4())
+        payload = {"addresses": addresses, "message": message}
 
-        last_error = None
-        for service in services:
-            chat_guid = f"{service};-;{number}"
-            payload = {"chatGuid": chat_guid, "message": message, "tempGuid": temp_guid}
+        try:
+            async with aiohttp.ClientSession() as session, session.post(
+                url,
+                json=payload,
+                params=params,
+                ssl=ssl
+            ) as response:
+                response.raise_for_status()
+                _LOGGER.debug("Message sent successfully")
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Error sending message: %s", err)
+            raise
 
-            try:
-                async with aiohttp.ClientSession() as session, session.post(
-                    url,
-                    json=payload,
-                    params=params,
-                    ssl=ssl
-                ) as response:
-                    if response.status == 200:
-                        _LOGGER.debug(f"Message sent successfully using {service}")
-                        return
-                    else:
-                        _LOGGER.warning(f"Failed to send using {service}, status: {response.status}")
-                        last_error = aiohttp.ClientError(f"Status {response.status}")
-            except aiohttp.ClientError as err:
-                _LOGGER.warning(f"Error sending using {service}: {err}")
-                last_error = err
-
-        if last_error:
-            _LOGGER.error("All send attempts failed")
-            raise last_error
-
-    hass.services.async_register(DOMAIN, "send_imessage", send_imessage)
+    hass.services.async_register(DOMAIN, "send_message", send_message)
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    hass.services.async_remove(DOMAIN, "send_imessage")
+    hass.services.async_remove(DOMAIN, "send_message")
     hass.data[DOMAIN].pop(entry.entry_id)
     return True

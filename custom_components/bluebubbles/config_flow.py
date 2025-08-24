@@ -8,7 +8,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST
 from homeassistant.helpers import selector
 
-from .const import CONF_COUNTRY_CODE, CONF_PASSWORD, CONF_SSL, DOMAIN
+from .const import CONF_PASSWORD, CONF_SSL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +56,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
                         ),
                         vol.Optional(CONF_SSL, default=False): selector.BooleanSelector(),
-                        vol.Optional(CONF_COUNTRY_CODE, default="1"): selector.TextSelector(),
                     }
                 ),
                 errors=errors,
@@ -73,7 +72,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
                     ),
                     vol.Optional(CONF_SSL, default=False): selector.BooleanSelector(),
-                    vol.Optional(CONF_COUNTRY_CODE, default="1"): selector.TextSelector(),
                 }
             ),
             errors={},

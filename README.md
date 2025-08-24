@@ -37,7 +37,6 @@ This integration uses Home Assistant's configuration flow for setup. BlueBubbles
    - **Host**: The URL of your BlueBubbles server (e.g., `http://192.168.1.100:1234` or `https://bluebubbles.your-domain.com`).
    - **Password**: The password set in your BlueBubbles server.
    - **SSL** (optional, default: false): Enable if your server uses HTTPS with a self-signed certificate.
-   - **Country Code** (optional, default: "1"): The default country code for phone numbers (e.g., "1" for US).
 4. Submit the form. The integration will attempt to connect and verify the details.
 5. If successful, the integration will be added.
 
@@ -47,11 +46,11 @@ This integration uses Home Assistant's configuration flow for setup. BlueBubbles
 
 The integration provides a single service for sending iMessages.
 
-### send_imessage
+### send_message
 
 Sends an iMessage via BlueBubbles.
 
-- **number**: The phone number to send to (without country code if using the default). Required.
+- **addresses**: The addresses (Phone Numbers or Emails) to send to. Required.
 - **message**: The message to send. Required.
 
 Example automation in YAML:
@@ -63,9 +62,9 @@ automation:
       - platform: time
         at: "12:00:00"
     action:
-      - service: bluebubbles.send_imessage
+      - service: bluebubbles.send_message
         data:
-          number: "5551234567"
+          addresses: "+5558675309, my.contact@me.com"
           message: "Hello from Home Assistant!"
 ```
 
