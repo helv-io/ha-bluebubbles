@@ -5,8 +5,7 @@
         "data": {
           "host": "Server Host, http[s]:// + port if needed",
           "password": "Server Password",
-          "ssl": "SSL certificate (disable if self-signed)?",
-          "country_code": "Country Code"
+          "ssl": "SSL certificate (disable if self-signed)?"
         }
       }
     },
