@@ -27,16 +27,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         password = conf[CONF_PASSWORD]
         ssl = conf[CONF_SSL]
 
-        number_str = service_call.data.get("number", "").strip()
+        addresses_str = service_call.data.get("addresses", "").strip()
         message = service_call.data.get("message", "").strip()
 
-        if not number_str:
-            raise ValueError("Number is required")
+        if not addresses_str:
+            raise ValueError("At least one address is required")
         if not message:
             raise ValueError("Message is required")
 
         # Split by , or ; and trim
-        addresses = [n.strip() for n in re.split(r'[,;]', number_str) if n.strip()]
+        addresses = [n.strip() for n in re.split(r'[,;]', addresses_str) if n.strip()]
 
         if not addresses:
             raise ValueError("No valid addresses provided")
