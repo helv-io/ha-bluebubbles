@@ -1,4 +1,3 @@
-```markdown
 # BlueBubbles Integration for Home Assistant
 
 This integration allows you to send messages (iMessage/RCS/SMS/MMS) from Home Assistant using a BlueBubbles server. It connects to your BlueBubbles instance and exposes a service for sending messages.
@@ -94,4 +93,3 @@ This integration is licensed under the MIT License. See the [LICENSE][license] f
 [bluebubbles-docs]: https://docs.bluebubbles.app
 [issue-tracker]: https://github.com/helv-io/ha-bluebubbles/issues
 [license]: https://github.com/helv-io/ha-bluebubbles/blob/main/LICENSE
-```
