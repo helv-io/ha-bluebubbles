@@ -93,3 +93,8 @@ This integration is licensed under the MIT License. See the [LICENSE][license] f
 [bluebubbles-docs]: https://docs.bluebubbles.app
 [issue-tracker]: https://github.com/helv-io/ha-bluebubbles/issues
 [license]: https://github.com/helv-io/ha-bluebubbles/blob/main/LICENSE
+
+## Star History
+Thank you for your support and feedback!
+
+[![Star History Chart](https://api.star-history.com/svg?repos=helv-io/ha-bluebubbles&type=Date)](https://www.star-history.com/#helv-io/ha-bluebubbles&Date)
