@@ -1,6 +1,14 @@
 # BlueBubbles Integration for Home Assistant
 
-This integration allows you to send messages (iMessage/RCS/SMS/MMS) from Home Assistant using a BlueBubbles server. It connects to your BlueBubbles instance and exposes a service for sending messages.
+Send and receive iMessage/RCS/SMS/MMS from Home Assistant via a [BlueBubbles](https://bluebubbles.app) server.
+
+## Architecture
+
+- **Outbound**: `bluebubbles.send_message` talks to the BlueBubbles REST API (`/api/v1/chat/new`, `/api/v1/message/attachment`) through a shared `aiohttp` session (`async_get_clientsession`).
+- **Inbound** (optional): Home Assistant registers a webhook (`/api/webhook/<id>`). BlueBubbles POSTs `new-message` events to it (auto-registered via `/api/v1/webhook` when enabled, or manually in the BlueBubbles UI).
+- **Automations**: A BlueBubbles device exposes device triggers `message_received` and `phrase_received`, backed by the `bluebubbles_message_received` event.
+
+Existing installs that only send messages keep working with no reconfigure — inbound is opt-in under **Configure**.
 
 ## Installation
 
@@ -44,9 +52,84 @@ This integration uses Home Assistant's configuration flow for setup. BlueBubbles
 
 The integration automatically detects if Private API is enabled on your server and updates this on Home Assistant restarts. Private API is required for sending to multiple addresses (group messages); without it, only single-address sends are supported.
 
-## Services
+## Inbound messages & device triggers
 
-The integration provides a single service for sending messages.
+Inbound messaging is **opt-in** so existing send-only setups are unchanged.
+
+1. Open **Settings → Devices & Services → BlueBubbles → Configure**.
+2. Enable **Enable inbound message webhooks**.
+3. Leave **Auto-register webhook with BlueBubbles server** on if Home Assistant has a URL the Mac can reach (same LAN is fine, e.g. `http://homeassistant.local:8123`).
+4. Save. The options form shows the webhook path (for example `/api/webhook/<id>`).
+
+### Network notes
+
+- BlueBubbles must be able to **POST** to your Home Assistant webhook URL.
+- On a typical LAN, `http://<ha-host>:8123/api/webhook/<id>` works. Prefer **local only** (default) so the webhook rejects non-local callers.
+- If auto-register fails (no HA URL, older BlueBubbles, etc.), add the webhook manually in **BlueBubbles Server → API & Webhooks → Add Webhook**:
+  - URL: `http(s)://<home-assistant>/api/webhook/<id>`
+  - Events: `new-message`
+- BlueBubbles server **1.0.0+** is required for webhooks.
+
+### Device triggers
+
+On the BlueBubbles device, automations can use:
+
+| Trigger | When it fires |
+|---|---|
+| **Message received** | Any inbound message (after filters) |
+| **Phrase received** | Message text matches a phrase (`contains`, `exact`, or `regex`) |
+
+Trigger data available in templates includes: `trigger.text`, `trigger.sender`, `trigger.sender_name`, `trigger.chat_guid`, `trigger.chat_identifier`, `trigger.message_guid`, `trigger.attachments`, `trigger.timestamp`, `trigger.service`, and for phrase triggers `trigger.matched_phrase`.
+
+Optional Configure filters:
+
+- **Allowed senders** — comma-separated phones/emails; empty means all
+- **Include from me** — also fire on messages sent from the BlueBubbles Mac
+
+### Example automations
+
+Any inbound message → notify:
+
+```yaml
+automation:
+  - alias: iMessage received
+    trigger:
+      - platform: device
+        domain: bluebubbles
+        device_id: YOUR_BLUEBUBBLES_DEVICE_ID
+        type: message_received
+    action:
+      - service: notify.persistent_notification
+        data:
+          title: "iMessage from {{ trigger.sender }}"
+          message: "{{ trigger.text }}"
+```
+
+Phrase match → run a script:
+
+```yaml
+automation:
+  - alias: Text "Send Me The Bill"
+    trigger:
+      - platform: device
+        domain: bluebubbles
+        device_id: YOUR_BLUEBUBBLES_DEVICE_ID
+        type: phrase_received
+        phrase: "Send Me The Bill"
+        match_type: contains
+    action:
+      - service: script.send_latest_bill
+```
+
+You can also listen for the raw event:
+
+```yaml
+trigger:
+  - platform: event
+    event_type: bluebubbles_message_received
+```
+
+## Services
 
 ### send_message
 
@@ -105,13 +188,18 @@ data:
 
 You can also call this service from the Developer Tools > Services page for testing.
 
+## Breaking changes
+
+**None.** Config entries, `send_message` fields, option keys for existing setups, and translations for current outbound use remain compatible. Inbound messaging is additive and disabled until you enable it in Configure.
+
 ## Troubleshooting
 
-- **Connection / Send Errors**: The service now surfaces BlueBubbles API error messages in Home Assistant (instead of a generic "Unknown error"). Double-check your host URL and password, and review the Home Assistant log for the redacted response body.
+- **Connection / Send Errors**: The service surfaces BlueBubbles API error messages in Home Assistant (instead of a generic "Unknown error"). Double-check your host URL and password, and review the Home Assistant log for the redacted response body.
 - **Permission Issues**: If messages aren't sending, verify permissions on your macOS BlueBubbles app as noted in the setup section.
 - **Attachment Path Blocked**: If sending an image fails with an allowlist error, add the directory to `allowlist_external_dirs` and restart Home Assistant.
 - **Group Send Failures**: If sending to multiple addresses fails, ensure Private API is enabled on your BlueBubbles server (check server settings). The integration detects this automatically on setup and restarts.
 - **SSL Problems**: If using HTTPS, try toggling the SSL option.
+- **Inbound not firing**: Confirm inbound is enabled under Configure, BlueBubbles has a `new-message` webhook pointing at Home Assistant, and (if using local-only) the Mac is on the same network. Check logs for `bluebubbles` webhook registration lines.
 - For other issues, check the Home Assistant logs (search for "bluebubbles") or open an [issue][issue-tracker].
 
 ## Contributing
