@@ -6,17 +6,18 @@ Send and receive iMessage/RCS/SMS/MMS from Home Assistant via a [BlueBubbles](ht
 
 - **Outbound**: `bluebubbles.send_message` talks to the BlueBubbles REST API (`/api/v1/chat/new`, `/api/v1/message/attachment`) through a shared `aiohttp` session (`async_get_clientsession`).
 - **Inbound** (optional): Home Assistant registers a webhook (`/api/webhook/<id>`). BlueBubbles POSTs `new-message` events to it (auto-registered via `/api/v1/webhook` when enabled, or manually in the BlueBubbles UI).
-- **Automations**: A BlueBubbles device exposes device triggers `message_received` and `phrase_received`, backed by the `bluebubbles_message_received` event.
+- **Automations**: Integration triggers (`bluebubbles.message_received` / `bluebubbles.phrase_received`) and device triggers on the BlueBubbles device, all backed by the `bluebubbles_message_received` event. An `event.bluebubbles_message` entity also fires for Developer Tools / state-style triggers.
 
 Existing installs that only send messages keep working with no reconfigure — inbound is opt-in under **Configure**.
 
-## Upgrading to 0.5
+## Upgrading to 0.6.0
 
-0.5 is additive. After updating (HACS/restart):
+0.6.0 is additive (no re-add required). After updating via HACS and reloading/restarting:
 
 1. Send-only setups need no changes.
-2. To receive messages, open **Configure**, enable inbound webhooks, and save (a stable webhook id is created for you).
-3. Use the BlueBubbles device triggers — see [Device triggers](#device-triggers) and [Example automations](#example-automations).
+2. Triggers are discoverable by name: **Settings → Automations → Add trigger → search “BlueBubbles”**.
+3. Or use **Device → BlueBubbles → Message received / Phrase received**.
+4. To receive messages, open **Configure**, enable inbound webhooks, and save (a stable webhook id is created for you). Triggers stay visible even when inbound is off; they simply will not fire until inbound is enabled.
 
 ## Installation
 
@@ -60,7 +61,7 @@ This integration uses Home Assistant's configuration flow for setup. BlueBubbles
 
 The integration automatically detects if Private API is enabled on your server and updates this on Home Assistant restarts. Private API is required for sending to multiple addresses (group messages); without it, only single-address sends are supported.
 
-## Inbound messages & device triggers
+## Inbound messages & triggers
 
 Inbound messaging is **opt-in** so existing send-only setups are unchanged. Jump to [Example automations](#example-automations) for copy-paste YAML.
 
@@ -68,6 +69,15 @@ Inbound messaging is **opt-in** so existing send-only setups are unchanged. Jump
 2. Enable **Enable inbound message webhooks**.
 3. Leave **Auto-register webhook with BlueBubbles server** on if Home Assistant has a URL the Mac can reach (same LAN is fine, e.g. `http://homeassistant.local:8123`).
 4. Save. The options form shows the webhook path (for example `/api/webhook/<id>`). Saving Configure always persists a stable `webhook_id` (no ephemeral webhook for normal UX).
+
+### Finding triggers in the UI
+
+BlueBubbles does **not** appear as a top-level “trigger type” in older menus the way sun/time do on every screen. Use one of these paths:
+
+1. **Recommended:** **Settings → Automations & Scenes → Create automation → Add trigger → search “BlueBubbles”** → choose **Message received** or **Phrase received**.
+2. **Device path:** **Add trigger → Device → select your BlueBubbles device → Message received / Phrase received**.
+
+Triggers are registered even when inbound is disabled; they will not fire until inbound webhooks are enabled and BlueBubbles is posting `new-message` events.
 
 ### Network notes
 
@@ -78,9 +88,7 @@ Inbound messaging is **opt-in** so existing send-only setups are unchanged. Jump
   - Events: `new-message`
 - BlueBubbles server **1.0.0+** is required for webhooks.
 
-### Device triggers
-
-On the BlueBubbles device, automations can use:
+### Trigger types
 
 | Trigger | When it fires |
 |---|---|
@@ -89,6 +97,8 @@ On the BlueBubbles device, automations can use:
 
 Trigger data available in templates includes: `trigger.text`, `trigger.sender`, `trigger.sender_name`, `trigger.chat_guid`, `trigger.chat_identifier`, `trigger.message_guid`, `trigger.attachments`, `trigger.timestamp`, `trigger.service`, and for phrase triggers `trigger.matched_phrase`.
 
+The integration also creates **`event.<name>_message`** (translation: Message). It fires on inbound messages with the same attributes, so you can inspect the latest message in Developer Tools → States, or use a generic event-entity trigger.
+
 Optional Configure filters:
 
 - **Allowed senders** — comma-separated phones/emails; empty means all
@@ -96,16 +106,13 @@ Optional Configure filters:
 
 ### Example automations
 
-Any inbound message → notify:
+Any inbound message → notify (integration trigger):
 
 ```yaml
 automation:
   - alias: iMessage received
     trigger:
-      - platform: device
-        domain: bluebubbles
-        device_id: YOUR_BLUEBUBBLES_DEVICE_ID
-        type: message_received
+      - platform: bluebubbles.message_received
     action:
       - service: notify.persistent_notification
         data:
@@ -119,17 +126,32 @@ Phrase match → run a script:
 automation:
   - alias: Text "Send Me The Bill"
     trigger:
-      - platform: device
-        domain: bluebubbles
-        device_id: YOUR_BLUEBUBBLES_DEVICE_ID
-        type: phrase_received
-        phrase: "Send Me The Bill"
-        match_type: contains
+      - platform: bluebubbles.phrase_received
+        options:
+          phrase: "Send Me The Bill"
+          match_type: contains
     action:
       - service: script.send_latest_bill
 ```
 
-You can also listen for the raw event:
+Device trigger form (same events):
+
+```yaml
+automation:
+  - alias: iMessage received (device)
+    trigger:
+      - platform: device
+        domain: bluebubbles
+        device_id: YOUR_BLUEBUBBLES_DEVICE_ID
+        type: message_received
+    action:
+      - service: notify.persistent_notification
+        data:
+          title: "iMessage from {{ trigger.sender }}"
+          message: "{{ trigger.text }}"
+```
+
+You can also listen for the raw bus event:
 
 ```yaml
 trigger:
@@ -207,7 +229,8 @@ You can also call this service from the Developer Tools > Services page for test
 - **Attachment Path Blocked**: If sending an image fails with an allowlist error, add the directory to `allowlist_external_dirs` and restart Home Assistant.
 - **Group Send Failures**: If sending to multiple addresses fails, ensure Private API is enabled on your BlueBubbles server (check server settings). The integration detects this automatically on setup and restarts.
 - **SSL Problems**: If using HTTPS, try toggling the SSL option.
-- **Inbound not firing**: Confirm inbound is enabled under Configure, BlueBubbles has a `new-message` webhook pointing at Home Assistant, and (if using local-only) the Mac is on the same network. Check logs for `bluebubbles` webhook registration lines.
+- **Can't find BlueBubbles triggers**: Update to **0.6.0** via HACS and reload. Then use **Automations → Add trigger → search BlueBubbles**, or **Device → BlueBubbles → Message received**. Device triggers are not listed under a separate “BlueBubbles” category outside the device picker.
+- **Inbound not firing**: Confirm inbound is enabled under Configure, BlueBubbles has a `new-message` webhook pointing at Home Assistant, and (if using local-only) the Mac is on the same network. Check logs for `bluebubbles` webhook registration lines. Triggers can still be selected when inbound is off; they only fire after inbound is enabled.
 - For other issues, check the Home Assistant logs (search for "bluebubbles") or open an [issue][issue-tracker].
 
 ## Contributing

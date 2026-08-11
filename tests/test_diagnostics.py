@@ -67,7 +67,7 @@ async def test_diagnostics_redacts_password(
     assert result["inbound_enabled"] is True
     assert result["webhook_path"] == f"/api/webhook/{WEBHOOK_ID}"
     assert result["private_api"] is True
-    assert result["integration_version"] == "0.5.0"
+    assert result["integration_version"] == "0.6.0"
 
     config_data = result["config_entry"]["data"]
     assert config_data[CONF_HOST] == MOCK_HOST

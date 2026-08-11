@@ -1,0 +1,25 @@
+message_received:
+  target:
+    device:
+      integration: bluebubbles
+
+phrase_received:
+  target:
+    device:
+      integration: bluebubbles
+  fields:
+    phrase:
+      required: true
+      example: Send Me The Bill
+      selector:
+        text:
+    match_type:
+      required: true
+      default: contains
+      selector:
+        select:
+          translation_key: match_type
+          options:
+            - contains
+            - exact
+            - regex

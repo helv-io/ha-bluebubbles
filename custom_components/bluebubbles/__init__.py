@@ -22,9 +22,10 @@ from .inbound import InboundManager
 
 _LOGGER = logging.getLogger(__name__)
 
-# No entity platforms; device_trigger.py is discovered via the device automation
-# integration when automations reference this domain's devices.
-PLATFORMS: list[Platform] = []
+# Event entity surfaces inbound messages in Developer Tools / state triggers.
+# device_trigger.py and trigger.py are discovered via device automation / the
+# trigger helper (not listed here).
+PLATFORMS: list[Platform] = [Platform.EVENT]
 
 
 @dataclass
@@ -173,6 +174,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if not hass.services.has_service(DOMAIN, "send_message"):
         hass.services.async_register(DOMAIN, "send_message", send_message)
 
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
@@ -184,6 +186,10 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry and tear down inbound listeners/webhooks."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not unload_ok:
+        return False
+
     runtime: BlueBubblesRuntimeData | dict[str, Any] | None = hass.data.get(
         DOMAIN, {}
     ).pop(entry.entry_id, None)
