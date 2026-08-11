@@ -3,17 +3,34 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.components import webhook
 from homeassistant.const import CONF_HOST
+from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import BlueBubblesApi
-from .const import CONF_PASSWORD, CONF_SSL, DOMAIN
+from .const import (
+    CONF_ALLOWED_HANDLES,
+    CONF_AUTO_REGISTER_WEBHOOK,
+    CONF_ENABLE_INBOUND,
+    CONF_INCLUDE_FROM_ME,
+    CONF_PASSWORD,
+    CONF_SSL,
+    CONF_WEBHOOK_ID,
+    CONF_WEBHOOK_LOCAL_ONLY,
+    DEFAULT_AUTO_REGISTER_WEBHOOK,
+    DEFAULT_ENABLE_INBOUND,
+    DEFAULT_INCLUDE_FROM_ME,
+    DEFAULT_WEBHOOK_LOCAL_ONLY,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +53,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(
-        self, user_input=None
+        self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
@@ -63,7 +80,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.error("Error connecting to BlueBubbles: %s", err)
                 errors["base"] = "cannot_connect"
             except (KeyError, TypeError, ValueError) as err:
-                _LOGGER.error("Unexpected BlueBubbles server info payload: %s", err)
+                _LOGGER.error(
+                    "Unexpected BlueBubbles server info payload: %s", err
+                )
                 errors["base"] = "cannot_connect"
             except Exception as err:  # noqa: BLE001 - surface unexpected setup failures
                 _LOGGER.error("Unexpected error: %s", err)
@@ -79,4 +98,91 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
             errors={},
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlowHandler:
+        """Return the options flow."""
+        return OptionsFlowHandler()
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle BlueBubbles options (inbound messaging)."""
+
+    def __init__(self) -> None:
+        """Initialize options flow state."""
+        self._webhook_id: str | None = None
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Manage inbound messaging options."""
+        current = self.config_entry.options
+        if self._webhook_id is None:
+            self._webhook_id = current.get(CONF_WEBHOOK_ID) or webhook.async_generate_id()
+        webhook_path = webhook.async_generate_path(self._webhook_id)
+
+        if user_input is not None:
+            options = {
+                CONF_ENABLE_INBOUND: user_input.get(
+                    CONF_ENABLE_INBOUND, DEFAULT_ENABLE_INBOUND
+                ),
+                CONF_AUTO_REGISTER_WEBHOOK: user_input.get(
+                    CONF_AUTO_REGISTER_WEBHOOK, DEFAULT_AUTO_REGISTER_WEBHOOK
+                ),
+                CONF_WEBHOOK_LOCAL_ONLY: user_input.get(
+                    CONF_WEBHOOK_LOCAL_ONLY, DEFAULT_WEBHOOK_LOCAL_ONLY
+                ),
+                CONF_INCLUDE_FROM_ME: user_input.get(
+                    CONF_INCLUDE_FROM_ME, DEFAULT_INCLUDE_FROM_ME
+                ),
+                CONF_ALLOWED_HANDLES: (
+                    str(user_input.get(CONF_ALLOWED_HANDLES) or "").strip()
+                ),
+                CONF_WEBHOOK_ID: self._webhook_id,
+            }
+            return self.async_create_entry(title="", data=options)
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_ENABLE_INBOUND,
+                    default=current.get(
+                        CONF_ENABLE_INBOUND, DEFAULT_ENABLE_INBOUND
+                    ),
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_AUTO_REGISTER_WEBHOOK,
+                    default=current.get(
+                        CONF_AUTO_REGISTER_WEBHOOK, DEFAULT_AUTO_REGISTER_WEBHOOK
+                    ),
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_WEBHOOK_LOCAL_ONLY,
+                    default=current.get(
+                        CONF_WEBHOOK_LOCAL_ONLY, DEFAULT_WEBHOOK_LOCAL_ONLY
+                    ),
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_INCLUDE_FROM_ME,
+                    default=current.get(
+                        CONF_INCLUDE_FROM_ME, DEFAULT_INCLUDE_FROM_ME
+                    ),
+                ): selector.BooleanSelector(),
+                vol.Optional(
+                    CONF_ALLOWED_HANDLES,
+                    default=current.get(CONF_ALLOWED_HANDLES, ""),
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            description_placeholders={"webhook_path": webhook_path},
         )
