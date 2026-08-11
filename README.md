@@ -53,7 +53,9 @@ The integration provides a single service for sending messages.
 Sends a message via BlueBubbles (iMessage/RCS/SMS/MMS depending on recipients).
 
 - **addresses**: The address(es) to send to—phone numbers or emails, separated by commas or semicolons for groups (requires Private API enabled on your server). Required.
-- **message**: The message to send. Required.
+- **message**: The message to send. Optional when `attachment` or `media_url` is provided.
+- **attachment**: Absolute path to a local file to attach (for example a camera snapshot under `/config/www/`). The path must be allowed via [`allowlist_external_dirs`](https://www.home-assistant.io/docs/configuration/basic/#allowlist_external_dirs). Optional.
+- **media_url**: URL of an image/file to download and attach. Used when `attachment` is not set. Optional.
 
 Example automation in YAML:
 
@@ -70,12 +72,44 @@ automation:
           message: "Hello from Home Assistant!"
 ```
 
+#### Sending an image
+
+1. Ensure the file path is under an allowed directory, for example:
+
+```yaml
+# configuration.yaml
+homeassistant:
+  allowlist_external_dirs:
+    - /config/www
+```
+
+2. Call the service with an `attachment` path (and optional caption in `message`):
+
+```yaml
+service: bluebubbles.send_message
+data:
+  addresses: "+15551234567"
+  message: "Front door motion"
+  attachment: "/config/www/snapshot.jpg"
+```
+
+Or attach a remote/local HTTP image with `media_url`:
+
+```yaml
+service: bluebubbles.send_message
+data:
+  addresses: "+15551234567"
+  message: "Front door motion"
+  media_url: "https://example.com/snapshot.jpg"
+```
+
 You can also call this service from the Developer Tools > Services page for testing.
 
 ## Troubleshooting
 
-- **Connection Errors**: Double-check your host URL and password. Ensure the BlueBubbles server is running and accessible from your Home Assistant instance.
+- **Connection / Send Errors**: The service now surfaces BlueBubbles API error messages in Home Assistant (instead of a generic "Unknown error"). Double-check your host URL and password, and review the Home Assistant log for the redacted response body.
 - **Permission Issues**: If messages aren't sending, verify permissions on your macOS BlueBubbles app as noted in the setup section.
+- **Attachment Path Blocked**: If sending an image fails with an allowlist error, add the directory to `allowlist_external_dirs` and restart Home Assistant.
 - **Group Send Failures**: If sending to multiple addresses fails, ensure Private API is enabled on your BlueBubbles server (check server settings). The integration detects this automatically on setup and restarts.
 - **SSL Problems**: If using HTTPS, try toggling the SSL option.
 - For other issues, check the Home Assistant logs (search for "bluebubbles") or open an [issue][issue-tracker].

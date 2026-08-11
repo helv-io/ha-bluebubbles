@@ -1,6 +1,6 @@
 send_message:
   name: Send Message
-  description: Sends a Message (iMessage / RCS / MMS / SMS) via BlueBubbles.
+  description: Sends a Message (iMessage / RCS / MMS / SMS) via BlueBubbles, with optional image/file attachment.
   fields:
     addresses:
       name: Address(es)
@@ -11,8 +11,22 @@ send_message:
         text:
     message:
       name: Message
-      description: The message to send.
-      required: true
+      description: The message to send. Optional when attachment or media_url is provided.
+      required: false
       example: "Hello!"
+      selector:
+        text:
+    attachment:
+      name: Attachment
+      description: Absolute path to a local file to attach (must be under allowlist_external_dirs).
+      required: false
+      example: "/config/www/snapshot.jpg"
+      selector:
+        text:
+    media_url:
+      name: Media URL
+      description: URL of an image/file to download and attach (used when attachment is not set).
+      required: false
+      example: "https://example.com/image.jpg"
       selector:
         text:
