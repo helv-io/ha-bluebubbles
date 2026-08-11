@@ -5,35 +5,53 @@ from __future__ import annotations
 import logging
 import mimetypes
 import re
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import BlueBubblesApi
 from .const import CONF_HOST, CONF_PASSWORD, CONF_SSL, DOMAIN
+from .inbound import InboundManager
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[str] = []
+# No entity platforms; device_trigger.py is discovered via the device automation
+# integration when automations reference this domain's devices.
+PLATFORMS: list[Platform] = []
+
+
+@dataclass
+class BlueBubblesRuntimeData:
+    """Runtime objects for a BlueBubbles config entry."""
+
+    api: BlueBubblesApi
+    inbound: InboundManager
+    device_id: str
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BlueBubbles from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = entry.data
+
+    session = async_get_clientsession(hass, verify_ssl=entry.data.get(CONF_SSL, False))
+    api = BlueBubblesApi(
+        entry.data[CONF_HOST],
+        entry.data[CONF_PASSWORD],
+        entry.data.get(CONF_SSL, False),
+        session,
+    )
 
     async def fetch_and_update_private_api() -> None:
         conf = entry.data
-        host = conf[CONF_HOST]
-        password = conf[CONF_PASSWORD]
-        ssl = conf[CONF_SSL]
         try:
-            session = async_get_clientsession(hass, verify_ssl=ssl)
-            api = BlueBubblesApi(host, password, ssl, session)
             json_data = await api.async_get_server_info()
             new_private_api = json_data.get("data", {}).get("private_api")
             if new_private_api is None:
@@ -48,13 +66,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await fetch_and_update_private_api()
 
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=entry.title or "BlueBubbles",
+        manufacturer="BlueBubbles",
+        model="iMessage Server",
+        configuration_url=entry.data.get(CONF_HOST),
+    )
+
+    inbound = InboundManager(hass, entry, api, device_id=device.id)
+    await inbound.async_start()
+
+    hass.data[DOMAIN][entry.entry_id] = BlueBubblesRuntimeData(
+        api=api,
+        inbound=inbound,
+        device_id=device.id,
+    )
+
     async def send_message(service_call: ServiceCall) -> None:
         """Handle the send_message service."""
         conf = entry.data
-        host = conf[CONF_HOST]
-        password = conf[CONF_PASSWORD]
-        ssl = conf[CONF_SSL]
         private_api = conf.get("private_api", False)
+        runtime_data: BlueBubblesRuntimeData | None = hass.data.get(DOMAIN, {}).get(
+            entry.entry_id
+        )
+        send_api = runtime_data.api if runtime_data else api
 
         addresses_str = str(service_call.data.get("addresses", "")).strip()
         message = str(service_call.data.get("message", "")).strip()
@@ -82,10 +120,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
 
         method = "private-api" if private_api else "apple-script"
-        session = async_get_clientsession(hass, verify_ssl=ssl)
-        api = BlueBubblesApi(host, password, ssl, session)
 
-        chat_result = await api.async_create_chat(
+        chat_result = await send_api.async_create_chat(
             addresses,
             message=message or None,
             method=method,
@@ -121,11 +157,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             filename = path.name
             content_type = mimetypes.guess_type(filename)[0]
         else:
-            file_data, filename, content_type = await api.async_download_media(
+            file_data, filename, content_type = await send_api.async_download_media(
                 media_url
             )
 
-        await api.async_send_attachment(
+        await send_api.async_send_attachment(
             chat_guid,
             filename=filename,
             file_data=file_data,
@@ -134,15 +170,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         _LOGGER.debug("Attachment '%s' sent successfully", filename)
 
-    hass.services.async_register(DOMAIN, "send_message", send_message)
+    if not hass.services.has_service(DOMAIN, "send_message"):
+        hass.services.async_register(DOMAIN, "send_message", send_message)
 
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
 
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload when options change (inbound enable/disable, filters, etc.)."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    if hass.services.has_service(DOMAIN, "send_message"):
+    """Unload a config entry and tear down inbound listeners/webhooks."""
+    runtime: BlueBubblesRuntimeData | dict[str, Any] | None = hass.data.get(
+        DOMAIN, {}
+    ).pop(entry.entry_id, None)
+
+    if isinstance(runtime, BlueBubblesRuntimeData):
+        await runtime.inbound.async_stop()
+
+    # single_config_entry integration, but keep the guard for safety
+    remaining = hass.data.get(DOMAIN, {})
+    if not remaining and hass.services.has_service(DOMAIN, "send_message"):
         hass.services.async_remove(DOMAIN, "send_message")
-    if DOMAIN in hass.data:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
+
     return True

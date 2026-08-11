@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "host": "Server Host, http[s]:// + port if needed",
+          "password": "Server Password",
+          "ssl": "SSL certificate (disable if self-signed)?"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the BlueBubbles server. Please check the host and your network connection.",
+      "invalid_auth": "Invalid authentication. Please check your password.",
+      "unknown": "An unknown error occurred. Please try again and check the logs if the problem persists."
+    },
+    "abort": {
+      "already_configured": "This BlueBubbles server is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "BlueBubbles inbound messaging",
+        "description": "Enable inbound messages so Home Assistant can trigger automations from iMessage/SMS. Webhook path: `{webhook_path}`. Point BlueBubbles at your Home Assistant base URL plus that path (auto-register does this when possible).",
+        "data": {
+          "enable_inbound": "Enable inbound message webhooks",
+          "auto_register_webhook": "Auto-register webhook with BlueBubbles server",
+          "webhook_local_only": "Accept webhooks from local network only",
+          "include_from_me": "Also trigger on messages sent from this Mac (isFromMe)",
+          "allowed_handles": "Allowed senders (optional, comma-separated phones/emails; empty = all)"
+        },
+        "data_description": {
+          "enable_inbound": "Registers a Home Assistant webhook and fires device triggers for new messages.",
+          "auto_register_webhook": "Calls the BlueBubbles /api/v1/webhook API using your Home Assistant URL.",
+          "webhook_local_only": "Recommended when BlueBubbles and Home Assistant share a LAN.",
+          "include_from_me": "Off by default so your own outbound messages do not fire automations.",
+          "allowed_handles": "Example: +15551234567, friend@icloud.com"
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "message_received": "Message received",
+      "phrase_received": "Phrase received"
+    }
+  }
+}
