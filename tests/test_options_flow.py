@@ -52,3 +52,19 @@ async def test_options_flow_enables_inbound(hass: HomeAssistant) -> None:
     assert entry.options[CONF_ENABLE_INBOUND] is True
     assert entry.options[CONF_WEBHOOK_ID]
     assert entry.options["allowed_handles"] == "+15551234567"
+
+    # Re-saving options must keep the same webhook_id (stable, not ephemeral).
+    first_webhook_id = entry.options[CONF_WEBHOOK_ID]
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_ENABLE_INBOUND: True,
+            "auto_register_webhook": False,
+            "webhook_local_only": True,
+            "include_from_me": False,
+            "allowed_handles": "+15551234567",
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_WEBHOOK_ID] == first_webhook_id
