@@ -22,7 +22,7 @@
     "step": {
       "init": {
         "title": "BlueBubbles inbound messaging",
-        "description": "Enable inbound messages so Home Assistant can trigger automations from iMessage/SMS. Webhook path: `{webhook_path}` — point BlueBubbles at `http(s)://<home-assistant>{webhook_path}` (auto-register does this when possible).",
+        "description": "Enable inbound messages so Home Assistant can trigger automations from iMessage/SMS. Webhook path: `{webhook_path}`. Point BlueBubbles at your Home Assistant base URL plus that path (auto-register does this when possible).",
         "data": {
           "enable_inbound": "Enable inbound message webhooks",
           "auto_register_webhook": "Auto-register webhook with BlueBubbles server",
