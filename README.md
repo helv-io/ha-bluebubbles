@@ -10,6 +10,14 @@ Send and receive iMessage/RCS/SMS/MMS from Home Assistant via a [BlueBubbles](ht
 
 Existing installs that only send messages keep working with no reconfigure — inbound is opt-in under **Configure**.
 
+## Upgrading to 0.5
+
+0.5 is additive. After updating (HACS/restart):
+
+1. Send-only setups need no changes.
+2. To receive messages, open **Configure**, enable inbound webhooks, and save (a stable webhook id is created for you).
+3. Use the BlueBubbles device triggers — see [Device triggers](#device-triggers) and [Example automations](#example-automations).
+
 ## Installation
 
 ### HACS (Recommended)
@@ -54,12 +62,12 @@ The integration automatically detects if Private API is enabled on your server a
 
 ## Inbound messages & device triggers
 
-Inbound messaging is **opt-in** so existing send-only setups are unchanged.
+Inbound messaging is **opt-in** so existing send-only setups are unchanged. Jump to [Example automations](#example-automations) for copy-paste YAML.
 
 1. Open **Settings → Devices & Services → BlueBubbles → Configure**.
 2. Enable **Enable inbound message webhooks**.
 3. Leave **Auto-register webhook with BlueBubbles server** on if Home Assistant has a URL the Mac can reach (same LAN is fine, e.g. `http://homeassistant.local:8123`).
-4. Save. The options form shows the webhook path (for example `/api/webhook/<id>`).
+4. Save. The options form shows the webhook path (for example `/api/webhook/<id>`). Saving Configure always persists a stable `webhook_id` (no ephemeral webhook for normal UX).
 
 ### Network notes
 
