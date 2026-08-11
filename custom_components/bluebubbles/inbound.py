@@ -18,7 +18,6 @@ from .const import (
     BB_EVENT_NEW_MESSAGE,
     CONF_ALLOWED_HANDLES,
     CONF_AUTO_REGISTER_WEBHOOK,
-    CONF_BB_WEBHOOK_ID,
     CONF_ENABLE_INBOUND,
     CONF_INCLUDE_FROM_ME,
     CONF_WEBHOOK_ID,
@@ -61,7 +60,7 @@ class InboundManager:
         self.api = api
         self.device_id = device_id
         self._webhook_id: str | None = None
-        self._bb_webhook_id: str | int | None = entry.options.get(CONF_BB_WEBHOOK_ID)
+        self._bb_webhook_id: str | int | None = None
         self._registered = False
 
     @property

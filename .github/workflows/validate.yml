@@ -1,0 +1,28 @@
+name: Validate
+
+# Replaces the inactivity-disabled hassfest.yml / hacs_action.yml workflows so
+# pull requests always run Home Assistant + HACS validation.
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: HACS Action
+        uses: hacs/action@main
+        with:
+          category: integration
