@@ -31,7 +31,7 @@
           "allowed_handles": "Allowed senders (optional, comma-separated phones/emails; empty = all)"
         },
         "data_description": {
-          "enable_inbound": "Registers a Home Assistant webhook and fires device triggers for new messages.",
+          "enable_inbound": "Registers a Home Assistant webhook and fires BlueBubbles triggers for new messages. Triggers stay visible even when this is off; they simply will not fire until inbound is enabled.",
           "auto_register_webhook": "Calls the BlueBubbles /api/v1/webhook API using your Home Assistant URL.",
           "webhook_local_only": "Recommended when BlueBubbles and Home Assistant share a LAN.",
           "include_from_me": "Off by default so your own outbound messages do not fire automations.",
@@ -40,10 +40,59 @@
       }
     }
   },
+  "entity": {
+    "event": {
+      "message": {
+        "name": "Message",
+        "state_attributes": {
+          "text": { "name": "Text" },
+          "sender": { "name": "Sender" },
+          "sender_name": { "name": "Sender name" },
+          "chat_guid": { "name": "Chat GUID" },
+          "chat_identifier": { "name": "Chat identifier" },
+          "message_guid": { "name": "Message GUID" },
+          "is_from_me": { "name": "From me" },
+          "timestamp": { "name": "Timestamp" },
+          "attachments": { "name": "Attachments" },
+          "service": { "name": "Service" },
+          "subject": { "name": "Subject" }
+        }
+      }
+    }
+  },
   "device_automation": {
     "trigger_type": {
       "message_received": "Message received",
       "phrase_received": "Phrase received"
+    }
+  },
+  "selector": {
+    "match_type": {
+      "options": {
+        "contains": "Contains",
+        "exact": "Exact",
+        "regex": "Regular expression"
+      }
+    }
+  },
+  "triggers": {
+    "message_received": {
+      "name": "Message received",
+      "description": "Triggers when one or more BlueBubbles messages are received."
+    },
+    "phrase_received": {
+      "name": "Phrase received",
+      "description": "Triggers when one or more BlueBubbles messages match a phrase.",
+      "fields": {
+        "phrase": {
+          "name": "Phrase",
+          "description": "Text to match against the inbound message body."
+        },
+        "match_type": {
+          "name": "Match type",
+          "description": "How the phrase is compared to the message text."
+        }
+      }
     }
   }
 }
