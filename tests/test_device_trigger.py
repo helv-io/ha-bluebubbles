@@ -76,6 +76,58 @@ async def test_async_get_triggers(hass: HomeAssistant, aioclient_mock) -> None:
     assert types == {TRIGGER_TYPE_MESSAGE_RECEIVED, TRIGGER_TYPE_PHRASE_RECEIVED}
 
 
+async def test_device_triggers_listed_when_inbound_disabled(
+    hass: HomeAssistant, aioclient_mock
+) -> None:
+    """Device triggers stay discoverable when inbound webhooks are off."""
+    aioclient_mock.get(
+        f"{MOCK_HOST}/api/v1/server/info",
+        json={
+            "status": 200,
+            "data": {"private_api": True, "detected_imessage": "user@icloud.com"},
+        },
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HOST: MOCK_HOST,
+            CONF_PASSWORD: MOCK_PASSWORD,
+            CONF_SSL: False,
+            "private_api": True,
+        },
+        title="user@icloud.com",
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    assert device is not None
+    triggers = await device_trigger.async_get_triggers(hass, device.id)
+    assert {trigger[CONF_TYPE] for trigger in triggers} == {
+        TRIGGER_TYPE_MESSAGE_RECEIVED,
+        TRIGGER_TYPE_PHRASE_RECEIVED,
+    }
+
+
+async def test_async_validate_trigger_config(
+    hass: HomeAssistant, aioclient_mock
+) -> None:
+    """TRIGGER_SCHEMA validation accepts a message_received device trigger."""
+    _entry, device_id = await _setup_entry(hass, aioclient_mock)
+    validated = await device_trigger.async_validate_trigger_config(
+        hass,
+        {
+            CONF_PLATFORM: "device",
+            CONF_DOMAIN: DOMAIN,
+            CONF_DEVICE_ID: device_id,
+            CONF_TYPE: TRIGGER_TYPE_MESSAGE_RECEIVED,
+        },
+    )
+    assert validated[CONF_TYPE] == TRIGGER_TYPE_MESSAGE_RECEIVED
+
+
 async def test_phrase_capabilities_include_match_fields(
     hass: HomeAssistant, aioclient_mock
 ) -> None:
