@@ -17,7 +17,6 @@ CONF_AUTO_REGISTER_WEBHOOK: Final = "auto_register_webhook"
 CONF_WEBHOOK_LOCAL_ONLY: Final = "webhook_local_only"
 CONF_INCLUDE_FROM_ME: Final = "include_from_me"
 CONF_ALLOWED_HANDLES: Final = "allowed_handles"
-CONF_BB_WEBHOOK_ID: Final = "bb_webhook_id"
 
 DEFAULT_ENABLE_INBOUND: Final = False
 DEFAULT_AUTO_REGISTER_WEBHOOK: Final = True

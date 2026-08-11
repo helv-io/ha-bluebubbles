@@ -88,10 +88,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def send_message(service_call: ServiceCall) -> None:
         """Handle the send_message service."""
         conf = entry.data
-        host = conf[CONF_HOST]
-        password = conf[CONF_PASSWORD]
-        ssl = conf[CONF_SSL]
         private_api = conf.get("private_api", False)
+        runtime_data: BlueBubblesRuntimeData | None = hass.data.get(DOMAIN, {}).get(
+            entry.entry_id
+        )
+        send_api = runtime_data.api if runtime_data else api
 
         addresses_str = str(service_call.data.get("addresses", "")).strip()
         message = str(service_call.data.get("message", "")).strip()
@@ -119,8 +120,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
 
         method = "private-api" if private_api else "apple-script"
-        send_session = async_get_clientsession(hass, verify_ssl=ssl)
-        send_api = BlueBubblesApi(host, password, ssl, send_session)
 
         chat_result = await send_api.async_create_chat(
             addresses,
