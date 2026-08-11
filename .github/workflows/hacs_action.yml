@@ -9,9 +9,10 @@ on:
 jobs:
   hacs:
     name: HACS Action
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: HACS Action
-        uses: "hacs/action@main"
+        uses: hacs/action@main
         with:
-          category: "integration"
+          category: integration

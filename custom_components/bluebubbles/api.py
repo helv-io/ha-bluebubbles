@@ -311,3 +311,161 @@ class BlueBubblesApi:
             raise HomeAssistantError(
                 f"Cannot download media_url: {err}"
             ) from err
+
+    async def async_list_webhooks(self) -> list[dict[str, Any]]:
+        """List webhooks registered with the BlueBubbles server."""
+        url = f"{self._host}/api/v1/webhook"
+        try:
+            async with self._session.get(
+                url, params=self._params, ssl=self._ssl
+            ) as response:
+                payload = await async_parse_response(
+                    response,
+                    password=self._password,
+                    context="BlueBubbles list webhooks",
+                )
+        except HomeAssistantError:
+            raise
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Error listing BlueBubbles webhooks: %s", err)
+            raise HomeAssistantError(
+                f"Cannot connect to BlueBubbles server: {err}"
+            ) from err
+
+        data = payload.get("data")
+        if data is None:
+            return []
+        if isinstance(data, list):
+            return [item for item in data if isinstance(item, dict)]
+        return []
+
+    async def async_create_webhook(
+        self, webhook_url: str, events: list[str]
+    ) -> dict[str, Any]:
+        """Register a webhook URL with the BlueBubbles server."""
+        url = f"{self._host}/api/v1/webhook"
+        payload = {"url": webhook_url, "events": events}
+        try:
+            async with self._session.post(
+                url,
+                json=payload,
+                params=self._params,
+                ssl=self._ssl,
+            ) as response:
+                return await async_parse_response(
+                    response,
+                    password=self._password,
+                    context="BlueBubbles create webhook",
+                )
+        except HomeAssistantError:
+            raise
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Error creating BlueBubbles webhook: %s", err)
+            raise HomeAssistantError(
+                f"Cannot connect to BlueBubbles server: {err}"
+            ) from err
+
+    async def async_delete_webhook(self, webhook_id: str | int) -> dict[str, Any]:
+        """Delete a webhook registration from the BlueBubbles server."""
+        url = f"{self._host}/api/v1/webhook/{webhook_id}"
+        try:
+            async with self._session.delete(
+                url, params=self._params, ssl=self._ssl
+            ) as response:
+                return await async_parse_response(
+                    response,
+                    password=self._password,
+                    context="BlueBubbles delete webhook",
+                )
+        except HomeAssistantError:
+            raise
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Error deleting BlueBubbles webhook: %s", err)
+            raise HomeAssistantError(
+                f"Cannot connect to BlueBubbles server: {err}"
+            ) from err
+
+
+def normalize_inbound_message(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Normalize a BlueBubbles webhook payload into trigger-friendly event data.
+
+    Returns None when the payload is not a usable new-message event.
+    """
+    event_type = payload.get("type")
+    data = payload.get("data")
+
+    # Some servers wrap the message under data; others may POST the message body
+    # directly. Accept both shapes.
+    if isinstance(data, dict) and event_type:
+        message = data
+    elif isinstance(payload.get("guid"), str) or isinstance(payload.get("text"), str):
+        message = payload
+        event_type = event_type or "new-message"
+    else:
+        return None
+
+    if event_type not in (None, "new-message", "message"):
+        return None
+
+    if not isinstance(message, dict):
+        return None
+
+    handle = message.get("handle") if isinstance(message.get("handle"), dict) else {}
+    chats = message.get("chats") if isinstance(message.get("chats"), list) else []
+    chat = chats[0] if chats and isinstance(chats[0], dict) else {}
+
+    attachments_raw = message.get("attachments")
+    attachments: list[dict[str, Any]] = []
+    if isinstance(attachments_raw, list):
+        for item in attachments_raw:
+            if not isinstance(item, dict):
+                continue
+            attachments.append(
+                {
+                    "guid": item.get("guid"),
+                    "transfer_name": item.get("transferName")
+                    or item.get("transfer_name")
+                    or item.get("name"),
+                    "mime_type": item.get("mimeType") or item.get("mime_type"),
+                    "total_bytes": item.get("totalBytes") or item.get("total_bytes"),
+                }
+            )
+
+    sender = handle.get("address") or message.get("sender") or ""
+    sender_name = (
+        handle.get("displayName")
+        or handle.get("display_name")
+        or chat.get("displayName")
+        or ""
+    )
+
+    date_created = message.get("dateCreated") or message.get("date_created")
+    timestamp: str | int | None
+    if isinstance(date_created, (int, float)):
+        timestamp = int(date_created)
+    elif isinstance(date_created, str):
+        timestamp = date_created
+    else:
+        timestamp = None
+
+    text = message.get("text")
+    if text is None:
+        text = ""
+    else:
+        text = str(text)
+
+    return {
+        "text": text,
+        "sender": str(sender) if sender else "",
+        "sender_name": str(sender_name) if sender_name else "",
+        "chat_guid": chat.get("guid") or message.get("chatGuid") or "",
+        "chat_identifier": chat.get("chatIdentifier")
+        or chat.get("chat_identifier")
+        or "",
+        "message_guid": message.get("guid") or "",
+        "is_from_me": bool(message.get("isFromMe") or message.get("is_from_me")),
+        "timestamp": timestamp,
+        "attachments": attachments,
+        "service": handle.get("service") or message.get("service") or "",
+        "subject": message.get("subject") or "",
+    }
