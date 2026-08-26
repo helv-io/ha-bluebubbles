@@ -165,7 +165,8 @@ trigger:
 
 Sends a message via BlueBubbles (iMessage/RCS/SMS/MMS depending on recipients).
 
-- **addresses**: The address(es) to send to—phone numbers or emails, separated by commas or semicolons for groups (requires Private API enabled on your server). Required.
+- **addresses**: The address(es) to send to—phone numbers or emails, separated by commas or semicolons for groups (requires Private API enabled on your server). Provide exactly one of `addresses` or `chat_guid`.
+- **chat_guid**: The GUID of an existing BlueBubbles chat, such as the `trigger.chat_guid` value from an inbound message. Provide exactly one of `chat_guid` or `addresses`.
 - **message**: The message to send. Optional when `attachment` or `media_url` is provided.
 - **attachment**: Absolute path to a local file to attach (for example a camera snapshot under `/config/www/`). The path must be allowed via [`allowlist_external_dirs`](https://www.home-assistant.io/docs/configuration/basic/#allowlist_external_dirs). Optional.
 - **media_url**: URL of an image/file to download and attach. Used when `attachment` is not set. Optional.
@@ -217,6 +218,28 @@ data:
 ```
 
 You can also call this service from the Developer Tools > Services page for testing.
+
+#### Sending to an existing chat
+
+Use the chat GUID exposed by an inbound message to reply to that exact conversation,
+including an existing group chat. Sending by chat GUID does not require the Private API:
+
+```yaml
+service: bluebubbles.send_message
+data:
+  chat_guid: "any;+;bd802086b5494bb6a197b0c10625f9e9"
+  message: "Reply from Home Assistant"
+```
+
+In an automation triggered by an inbound BlueBubbles message, it can be templated:
+
+```yaml
+action:
+  - service: bluebubbles.send_message
+    data:
+      chat_guid: "{{ trigger.chat_guid }}"
+      message: "Thanks, I received your message."
+```
 
 ## Breaking changes
 
