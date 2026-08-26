@@ -165,7 +165,8 @@ trigger:
 
 Sends a message via BlueBubbles (iMessage/RCS/SMS/MMS depending on recipients).
 
-- **addresses**: The address(es) to send to—phone numbers or emails, separated by commas or semicolons for groups (requires Private API enabled on your server). Required.
+- **addresses**: The address(es) to send to—phone numbers or emails, separated by commas or semicolons for groups (requires Private API enabled on your server). Provide exactly one of `addresses` or `chat_guid`.
+- **chat_guid**: The GUID of an existing BlueBubbles chat, such as the `trigger.chat_guid` value from an inbound message. Provide exactly one of `chat_guid` or `addresses`.
 - **message**: The message to send. Optional when `attachment` or `media_url` is provided.
 - **attachment**: Absolute path to a local file to attach (for example a camera snapshot under `/config/www/`). The path must be allowed via [`allowlist_external_dirs`](https://www.home-assistant.io/docs/configuration/basic/#allowlist_external_dirs). Optional.
 - **media_url**: URL of an image/file to download and attach. Used when `attachment` is not set. Optional.

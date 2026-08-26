@@ -225,6 +225,47 @@ class BlueBubblesApi:
                 f"Cannot connect to BlueBubbles server: {err}"
             ) from err
 
+    async def async_send_text(
+        self,
+        chat_guid: str,
+        message: str,
+        *,
+        method: str = "apple-script",
+    ) -> dict[str, Any]:
+        """Send text to an existing chat via /api/v1/message/text."""
+        url = f"{self._host}/api/v1/message/text"
+        payload = {
+            "chatGuid": chat_guid,
+            "tempGuid": f"temp-{uuid.uuid4()}",
+            "message": message,
+            "method": method,
+        }
+
+        try:
+            async with self._session.post(
+                url,
+                json=payload,
+                params=self._params,
+                ssl=self._ssl,
+            ) as response:
+                return await async_parse_response(
+                    response,
+                    password=self._password,
+                    context="BlueBubbles send message",
+                )
+        except HomeAssistantError:
+            raise
+        except aiohttp.ClientError as err:
+            safe_payload = redact_secrets(
+                json.dumps(payload), [self._password]
+            )
+            _LOGGER.error(
+                "Error sending message: %s. Payload: %s", err, safe_payload
+            )
+            raise HomeAssistantError(
+                f"Cannot connect to BlueBubbles server: {err}"
+            ) from err
+
     async def async_send_attachment(
         self,
         chat_guid: str,

@@ -96,43 +96,54 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         send_api = runtime_data.api if runtime_data else api
 
         addresses_str = str(service_call.data.get("addresses", "")).strip()
+        chat_guid = str(service_call.data.get("chat_guid", "")).strip()
         message = str(service_call.data.get("message", "")).strip()
         attachment_path = str(service_call.data.get("attachment", "")).strip()
         media_url = str(service_call.data.get("media_url", "")).strip()
 
-        if not addresses_str:
-            raise HomeAssistantError("At least one address is required")
+        if bool(addresses_str) == bool(chat_guid):
+            raise HomeAssistantError(
+                "Provide exactly one of addresses or chat_guid"
+            )
         if not message and not attachment_path and not media_url:
             raise HomeAssistantError(
                 "Message, attachment, or media_url is required"
             )
 
-        addresses = [
-            n.strip() for n in re.split(r"[,;]", addresses_str) if n.strip()
-        ]
-        if not addresses:
-            raise HomeAssistantError("No valid addresses provided")
-
-        if not private_api and len(addresses) > 1:
-            raise HomeAssistantError(
-                "Sending to multiple addresses is only supported when Private "
-                "API is enabled on your BlueBubbles server. Please use a single "
-                "address or enable Private API for group messaging."
-            )
-
         method = "private-api" if private_api else "apple-script"
 
-        chat_result = await send_api.async_create_chat(
-            addresses,
-            message=message or None,
-            method=method,
-        )
+        if chat_guid:
+            if message:
+                await send_api.async_send_text(
+                    chat_guid,
+                    message,
+                    method=method,
+                )
+        else:
+            addresses = [
+                n.strip() for n in re.split(r"[,;]", addresses_str) if n.strip()
+            ]
+            if not addresses:
+                raise HomeAssistantError("No valid addresses provided")
+
+            if not private_api and len(addresses) > 1:
+                raise HomeAssistantError(
+                    "Sending to multiple addresses is only supported when Private "
+                    "API is enabled on your BlueBubbles server. Please use a single "
+                    "address or enable Private API for group messaging."
+                )
+
+            chat_result = await send_api.async_create_chat(
+                addresses,
+                message=message or None,
+                method=method,
+            )
+            chat_guid = (chat_result.get("data") or {}).get("guid") or ""
 
         if not attachment_path and not media_url:
             _LOGGER.debug("Message sent successfully")
             return
 
-        chat_guid = (chat_result.get("data") or {}).get("guid")
         if not chat_guid:
             raise HomeAssistantError(
                 "BlueBubbles did not return a chat GUID required to send "

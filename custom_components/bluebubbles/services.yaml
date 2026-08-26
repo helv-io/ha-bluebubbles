@@ -4,9 +4,16 @@ send_message:
   fields:
     addresses:
       name: Address(es)
-      description: The address(es) to send to. Multiple addresses can be separated by commas or semicolons.
-      required: true
+      description: The address(es) to send to. Multiple addresses can be separated by commas or semicolons. Provide either addresses or chat_guid.
+      required: false
       example: "+15558675309, a.contact@me.com"
+      selector:
+        text:
+    chat_guid:
+      name: Chat GUID
+      description: The GUID of an existing BlueBubbles chat. Provide either chat_guid or addresses.
+      required: false
+      example: "any;+;bd802086b5494bb6a197b0c10625f9e9"
       selector:
         text:
     message:
