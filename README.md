@@ -219,28 +219,6 @@ data:
 
 You can also call this service from the Developer Tools > Services page for testing.
 
-#### Sending to an existing chat
-
-Use the chat GUID exposed by an inbound message to reply to that exact conversation,
-including an existing group chat. Sending by chat GUID does not require the Private API:
-
-```yaml
-service: bluebubbles.send_message
-data:
-  chat_guid: "any;+;bd802086b5494bb6a197b0c10625f9e9"
-  message: "Reply from Home Assistant"
-```
-
-In an automation triggered by an inbound BlueBubbles message, it can be templated:
-
-```yaml
-action:
-  - service: bluebubbles.send_message
-    data:
-      chat_guid: "{{ trigger.chat_guid }}"
-      message: "Thanks, I received your message."
-```
-
 ## Breaking changes
 
 **None.** Config entries, `send_message` fields, option keys for existing setups, and translations for current outbound use remain compatible. Inbound messaging is additive and disabled until you enable it in Configure.
