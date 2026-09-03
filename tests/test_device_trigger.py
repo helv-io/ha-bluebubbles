@@ -63,7 +63,9 @@ async def _setup_entry(hass: HomeAssistant, aioclient_mock) -> tuple[MockConfigE
     await hass.async_block_till_done()
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, entry.entry_id), entry.entry_id
+    )
     assert device is not None
     return entry, device.id
 
@@ -102,7 +104,9 @@ async def test_device_triggers_listed_when_inbound_disabled(
     await hass.async_block_till_done()
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, entry.entry_id), entry.entry_id
+    )
     assert device is not None
     triggers = await device_trigger.async_get_triggers(hass, device.id)
     assert {trigger[CONF_TYPE] for trigger in triggers} == {
