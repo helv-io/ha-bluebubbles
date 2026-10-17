@@ -18,4 +18,17 @@ jobs:
       - name: Install test dependencies
         run: pip install -r requirements_test.txt
       - name: Run tests
-        run: pytest -q
+        run: python3 .agent-checks/bin/agent-checks no-skips -- pytest -q -rs
+
+  alert:
+    name: Open an issue when the nightly run fails
+    if: ${{ always() && github.event_name == 'schedule' }}
+    needs: [pytest]
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 .agent-checks/bin/agent-checks nightly-alert "${{ contains(needs.*.result, 'failure') && 'fail' || 'ok' }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

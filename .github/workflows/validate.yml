@@ -26,3 +26,16 @@ jobs:
         uses: hacs/action@main
         with:
           category: integration
+
+  alert:
+    name: Open an issue when the nightly run fails
+    if: ${{ always() && github.event_name == 'schedule' }}
+    needs: [hassfest, hacs]
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 .agent-checks/bin/agent-checks nightly-alert "${{ contains(needs.*.result, 'failure') && 'fail' || 'ok' }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

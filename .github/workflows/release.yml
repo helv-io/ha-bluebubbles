@@ -9,7 +9,15 @@ permissions:
   contents: write
 
 jobs:
+  gate:
+    name: Version matches the tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 .agent-checks/bin/agent-checks release-version "$GITHUB_REF_NAME"
+
   release:
+    needs: gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -38,3 +46,13 @@ jobs:
             See the changelog for details.
           draft: false
           prerelease: false
+
+  verify:
+    name: Release page exists
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 .agent-checks/bin/agent-checks release-assets "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
