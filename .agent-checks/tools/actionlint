@@ -1,0 +1,28 @@
+#!/bin/bash
+# Runs actionlint (workflow file linter) at a pinned version, downloaded once and verified against a pinned checksum.
+# usage: tools/actionlint [actionlint args]   (default: lint .github/workflows)
+set -euo pipefail
+V=1.7.12
+case "$(uname -s)-$(uname -m)" in
+  Linux-x86_64)  T=linux_amd64;  S=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8 ;;
+  Linux-aarch64) T=linux_arm64;  S=325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6 ;;
+  Darwin-arm64)  T=darwin_arm64; S=aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f ;;
+  Darwin-x86_64) T=darwin_amd64; S=5b44c3bc2255115c9b69e30efc0fecdf498fdb63c5d58e17084fd5f16324c644 ;;
+  *) echo "error: no actionlint build for $(uname -sm)"; exit 2 ;;
+esac
+D="${XDG_CACHE_HOME:-$HOME/.cache}/agent-checks/actionlint-$V"
+if [ ! -x "$D/actionlint" ]; then
+  mkdir -p "$D"; f=$(mktemp)
+  curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v$V/actionlint_${V}_$T.tar.gz" -o "$f"
+  echo "$S  $f" | sha256sum -c - >/dev/null 2>&1 || echo "$S  $f" | shasum -a 256 -c - >/dev/null 2>&1 || { echo "error: actionlint download does not match its pinned checksum"; rm -f "$f"; exit 2; }
+  tar -xzf "$f" -C "$D" actionlint; rm -f "$f"
+fi
+# shellcheck and pyflakes are switched off on purpose: they are used when installed, so a runner that has them and a laptop that
+# does not would disagree (skgate went red in CI on style hints that the box never showed). This checks workflow structure and
+# expressions, which is where the real failures were (secrets in a job `if`).
+FLAGS=(-color=false -shellcheck= -pyflakes=)
+if [ $# -eq 0 ]; then
+  [ -d .github/workflows ] || { echo "no .github/workflows here"; exit 0; }
+  exec "$D/actionlint" "${FLAGS[@]}"
+fi
+exec "$D/actionlint" "${FLAGS[@]}" "$@"

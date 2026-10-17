@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""agent-checks: one command, the same checks locally and in CI. Run from the root of a repo.
+
+  agent-checks local [BASE]         everything CI runs, against BASE (default: the remote default branch)
+  agent-checks ci                   what the CI job runs (reads the GitHub event)
+  agent-checks identity RANGE | private-hash WORD... | voice tree|diff|rev ... | docs BASE HEAD | model-ids [--rev REV] | private
+  agent-checks release-version TAG [REV] | release-assets REPO TAG [ASSET...] | no-skips -- CMD... | nightly-alert fail|ok | verify
+  agent-checks actionlint           lint the workflow files (downloads a pinned, checksummed actionlint)
+  agent-checks version
+"""
+import json, os, subprocess, sys
+sys.dont_write_bytecode = True  # a vendored copy must stay byte for byte what was vendored
+HERE = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "checks"))
+import lib  # noqa: E402
+
+VERSION = open(os.path.join(HERE, "..", "VERSION")).read().strip()
+ZERO = "0" * 40
+
+
+def module(name):
+    return __import__(name)
+
+
+def run_range(base, head):
+    codes = []
+    codes.append(("identity", module("identity").run([f"{base}..{head}"])))
+    codes.append(("docs", module("docs").run([base, head])))
+    codes.append(("voice (added lines)", module("voice").run(["diff", base, head])))
+    return codes
+
+
+def verify_first():
+    return [("vendored copy is untouched", module("verify").run([]))]
+
+
+def run_tree():
+    out = [("model ids", module("model_ids").run([])), ("private words", module("private").run([]))]
+    if os.path.isdir(".github/workflows"):
+        out.append(("workflow files (actionlint)", subprocess.call([os.path.join(HERE, "..", "tools", "actionlint")])))
+    return out
+
+
+def default_base():
+    for ref in ("origin/HEAD", "origin/main", "origin/master"):
+        if subprocess.run(["git", "rev-parse", "--verify", "-q", ref], capture_output=True).returncode == 0:
+            return ref
+    return None
+
+
+def summarize(results):
+    bad = [n for n, c in results if c]
+    for n, c in results:
+        print(f"{'FAIL' if c else 'ok  '} {n}")
+    return 1 if bad else 0
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__); return 0
+    cmd, rest = argv[0], argv[1:]
+    if cmd == "version":
+        print(VERSION); return 0
+    if cmd == "local":
+        base = rest[0] if rest else default_base()
+        results = verify_first()
+        if base:
+            results += run_range(base, "HEAD")
+        else:
+            print("no remote default branch found; only whole-tree checks ran")
+        return summarize(results + run_tree())
+    if cmd == "ci":
+        ev = {}
+        if os.environ.get("GITHUB_EVENT_PATH") and os.path.exists(os.environ["GITHUB_EVENT_PATH"]):
+            ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+        name = os.environ.get("GITHUB_EVENT_NAME", "")
+        results = verify_first()
+        base = head = None
+        if name == "pull_request":
+            base, head = ev["pull_request"]["base"]["sha"], ev["pull_request"]["head"]["sha"]
+        elif name == "push" and ev.get("ref", "").startswith("refs/heads/"):
+            head = ev["after"]
+            if ev.get("before") and ev["before"] != ZERO:
+                base = ev["before"]
+            else:  # a new branch: check everything it adds on top of the default branch
+                default = ev.get("repository", {}).get("default_branch", "")
+                mb = subprocess.run(["git", "merge-base", f"origin/{default}", head], capture_output=True, text=True)
+                base = mb.stdout.strip() if mb.returncode == 0 and ev.get("ref") != f"refs/heads/{default}" else None
+        if base:
+            if subprocess.run(["git", "cat-file", "-e", base + "^{commit}"], capture_output=True).returncode != 0:
+                print(f"base commit {base[:7]} is not in this checkout (force push?); range checks skipped")
+            else:
+                results += run_range(base, head)
+        else:
+            print("no commit range for this event; only whole-tree checks run")
+        results += run_tree()
+        if name in ("schedule", "workflow_dispatch"):
+            results.append(("voice (whole tree)", module("voice").run(["tree"])))
+        return summarize(results)
+    table = {
+        "identity": ("identity", None), "voice": ("voice", None), "docs": ("docs", None),
+        "model-ids": ("model_ids", None), "private": ("private", None), "private-hash": ("private", None), "no-skips": ("noskips", None),
+    }
+    if cmd == "private-hash":
+        return module("private").run(["hash"] + rest)
+    if cmd in table:
+        return module(table[cmd][0]).run(rest)
+    if cmd == "verify":
+        return module("verify").run(rest)
+    if cmd == "nightly-alert":
+        return module("nightly").run(rest)
+    if cmd == "release-version":
+        return module("release").version(rest)
+    if cmd == "release-assets":
+        return module("release").assets(rest)
+    if cmd == "actionlint":
+        return subprocess.call([os.path.join(HERE, "..", "tools", "actionlint")] + rest)
+    print(f"unknown command {cmd!r}\n{__doc__}"); return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

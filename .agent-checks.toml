@@ -1,0 +1,18 @@
+# Settings for the shared checks (the pinned copy is in .agent-checks/).
+[docs]
+user-facing = "^custom_components/"
+require = ["README.md"]
+
+[model-ids]
+exempt = []
+
+[private]
+patterns = ['helv\.io']
+
+# One outside contributor, kept in the history on purpose.
+[identity]
+allow-emails = ["34263598+shigella520@users.noreply.github.com"]
+
+[[release.version]]
+file = "custom_components/bluebubbles/manifest.json"
+pattern = '"version": "([^"]+)"'

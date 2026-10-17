@@ -1,0 +1,21 @@
+# The shared agent-checks job. Set the checkout version your repo uses. The checks themselves are the pinned copy in .agent-checks/.
+name: agent-checks
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  agent-checks:
+    name: agent-checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Run the checks
+        run: python3 .agent-checks/bin/agent-checks ci
