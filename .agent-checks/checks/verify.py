@@ -1,4 +1,4 @@
-"""A repo carries a pinned copy of these checks in .agent-checks/ because CI on GitHub cannot read git.helv.io (it asks for a login).
+"""A repo carries a pinned copy of these checks in .agent-checks/ so CI runs exactly the reviewed checks and needs nothing from the network.
 `verify` proves the copy is exactly what was vendored: every file matches .agent-checks/MANIFEST, nothing extra, nothing missing.
 A hand edit would let one repo drift from the others, which is the problem this repo exists to remove."""
 import hashlib, os
@@ -42,5 +42,7 @@ def run(args):
             error(f".agent-checks/{rel} was edited by hand", f".agent-checks/{rel}"); bad += 1
     if bad:
         ref = open(os.path.join(HERE, "REF"), encoding="utf-8").read().strip() if os.path.exists(os.path.join(HERE, "REF")) else "?"
-        error(f"the vendored checks differ from agent-checks commit {ref[:12]}. Change them in the agent-checks repo, then run its tools/vendor to update this repo.")
+        sp = os.path.join(HERE, "SOURCE")
+        src = open(sp, encoding="utf-8").read().strip() if os.path.exists(sp) else "the agent-checks repo"
+        error(f"the vendored checks differ from agent-checks commit {ref[:12]} ({src}). Change them in the agent-checks repo, then run its tools/vendor to update this repo.")
     return 1 if bad else 0
