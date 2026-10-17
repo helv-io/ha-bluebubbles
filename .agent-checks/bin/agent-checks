@@ -6,6 +6,7 @@
   agent-checks identity RANGE | private-hash WORD... | voice tree|diff|rev ... | docs BASE HEAD | model-ids [--rev REV] | private
   agent-checks release-version TAG [REV] | release-assets REPO TAG [ASSET...] | no-skips -- CMD... | nightly-alert fail|ok | verify
   agent-checks actionlint           lint the workflow files (downloads a pinned, checksummed actionlint)
+  agent-checks workflow-permissions a called workflow never asks for more permission than the job that calls it
   agent-checks version
 """
 import json, os, subprocess, sys
@@ -38,6 +39,7 @@ def run_tree():
     out = [("model ids", module("model_ids").run([])), ("private words", module("private").run([]))]
     if os.path.isdir(".github/workflows"):
         out.append(("workflow files (actionlint)", subprocess.call([os.path.join(HERE, "..", "tools", "actionlint")])))
+        out.append(("workflow permissions", module("workflow_permissions").run([])))
     return out
 
 
@@ -113,6 +115,8 @@ def main(argv):
         return module("release").version(rest)
     if cmd == "release-assets":
         return module("release").assets(rest)
+    if cmd == "workflow-permissions":
+        return module("workflow_permissions").run(rest)
     if cmd == "actionlint":
         return subprocess.call([os.path.join(HERE, "..", "tools", "actionlint")] + rest)
     print(f"unknown command {cmd!r}\n{__doc__}"); return 2
